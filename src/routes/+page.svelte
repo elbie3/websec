@@ -144,7 +144,7 @@ window.location.href = `https://discord-verifier.eva.ac/webview?url=$&#123;encod
 		<span class="font-extrabold">we can officially verify our age as an adult.</span> all of this
 		code is open source and available
 		<a
-			href="https://github.com/xyzeva/discord-age-verifier"
+			href="https://github.com/xyzeva/k-id-age-verifier"
 			target="_blank"
 			class="font-extrabold underline"
 			rel="noreferer noopener">on github</a
