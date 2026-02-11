@@ -36,7 +36,7 @@
 _mods = webpackChunkdiscord_app.push([[Symbol()],&#123;&#125;,r=>r.c]);
 webpackChunkdiscord_app.pop(); // cleanup the chunk we added
 
-// utitility to find a webpack chunk by property
+// utility to find a webpack chunk by property
 findByProps = (...props) => &#123;
     for (let m of Object.values(_mods)) &#123;
         try &#123;
