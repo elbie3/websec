@@ -323,6 +323,16 @@ async function encryptPayload(nonce: string, payload: any) {
 	};
 }
 
+async function generateKIDProof(grant: string, attemptId: string) {
+	return Array.from(
+		new Uint8Array(
+			await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${grant}:${attemptId}:v1`))
+		)
+	)
+		.map((e) => e.toString(16).padStart(2, '0'))
+		.join('');
+}
+
 async function verify(
 	userAgent: string,
 	location: ReturnType<typeof getRandomLocation>,
@@ -816,11 +826,14 @@ export const POST = async (event: RequestEvent) => {
 
 		const payload = JSON.parse(atob(parts[1]));
 
+		const attemptId = crypto.randomUUID();
+
 		// fetch the webview first
-		await fetch(webviewUrl, {
+		const res = await fetch(webviewUrl, {
 			headers: {
 				'User-Agent': userAgent,
-				accept: '*/*',
+				accept:
+					'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
 				'accept-language': location.lang,
 				priority: 'u=1, i',
 				'sec-fetch-dest': 'empty',
@@ -830,6 +843,17 @@ export const POST = async (event: RequestEvent) => {
 				Referer: identifier
 			}
 		});
+
+		const privatelySsrGrantMatch = (await res.text()).match(
+			/privatelySsrGrant\\?":\\?"(eyJ[\w-]+\.[\w-]+\.[\w-]+)/
+		);
+
+		if (!privatelySsrGrantMatch) {
+			return jsonResponse({ error: 'failed to match privately ssr grant' }, 500);
+		}
+
+		const grant = privatelySsrGrantMatch[1];
+		const proof = await generateKIDProof(grant, attemptId);
 
 		const privatelyActionRes = await fetch(webviewUrl, {
 			method: 'POST',
@@ -849,7 +873,7 @@ export const POST = async (event: RequestEvent) => {
 				Referer: identifier
 			},
 			body: JSON.stringify([
-				{ verificationId: payload.jti, useBranding: true, attemptId: crypto.randomUUID() }
+				{ verificationId: payload.jti, useBranding: true, attemptId, proof, grant }
 			])
 		});
 
