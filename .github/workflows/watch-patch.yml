@@ -65,7 +65,6 @@ jobs:
 
       - name: Save new value into state branch
         run: |
-          # switch back to a branch we can push to in your fork
           git checkout -B watch-state origin/watch-state || git checkout -B watch-state
           echo "${{ steps.current.outputs.value }}" > .last_patch_state
 
