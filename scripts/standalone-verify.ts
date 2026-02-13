@@ -379,10 +379,14 @@ async function verify(qrCodeUrlStr: string) {
 
 	const generateTimeline = (maxTime: number) => {
 		const entries = [];
-		for (let i = 0; i < randomInt(2, 5); i++) {
-			const start = randomInt(1, maxTime - 100);
-			const end = start + randomInt(50, 500);
-			if (end < maxTime) entries.push([start, end]);
+		let lastTime = randomInt(100, 500);
+
+		for (let i = 0; i < randomInt(1, 3); i++) {
+			const end = lastTime + randomInt(500, 2000);
+			if (end < maxTime) {
+				entries.push([lastTime, end]);
+				lastTime = end + randomInt(200, 1000);
+			}
 		}
 		return entries;
 	};
@@ -594,7 +598,7 @@ async function verify(qrCodeUrlStr: string) {
 				model_version: 'v.2025.0',
 				cropper_version: 'v.0.0.3',
 				start_time_stamp: currentTime + Number(Math.random().toFixed(3)),
-				end_time_stamp: currentTime + completionTime + Number(Math.random().toFixed(3)),
+				end_time_stamp: currentTime + completionTime / 1000,
 				device_timezone: location.timezone,
 				referring_page: `https://d3ogqhtsivkon3.cloudfront.net/index-v1.10.22.html#/?token=${token}&shi=false&from_qr_scan=true`,
 				parent_page: `https://d3ogqhtsivkon3.cloudfront.net/dynamic_index.html?sl=${jwtPayload.jti}&region=eu-central-1`,
@@ -765,6 +769,9 @@ async function verify(qrCodeUrlStr: string) {
 
 	const encryptionData = await encryptPayload(sessionData.nonce, payload);
 	payload = Object.assign(payload, encryptionData);
+
+	Deno.writeTextFileSync('genned-payload.json', JSON.stringify(payload, null, 2));
+	return;
 
 	const completeRes = await fetch(`${BASE_URL}/age-services/d-privately-age-services`, {
 		method: 'POST',

@@ -344,16 +344,6 @@ async function encryptPayload(nonce: string, payload: any) {
 	};
 }
 
-async function generateKIDProof(grant: string, attemptId: string) {
-	return Array.from(
-		new Uint8Array(
-			await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${grant}:${attemptId}:v1`))
-		)
-	)
-		.map((e) => e.toString(16).padStart(2, '0'))
-		.join('');
-}
-
 async function verify(
 	sessionId: string,
 	userAgent: string,
@@ -433,10 +423,14 @@ async function verify(
 
 	const generateTimeline = (maxTime: number) => {
 		const entries = [];
-		for (let i = 0; i < randomInt(2, 5); i++) {
-			const start = randomInt(1, maxTime - 100);
-			const end = start + randomInt(50, 500);
-			if (end < maxTime) entries.push([start, end]);
+		let lastTime = randomInt(100, 500);
+
+		for (let i = 0; i < randomInt(1, 3); i++) {
+			const end = lastTime + randomInt(500, 2000);
+			if (end < maxTime) {
+				entries.push([lastTime, end]);
+				lastTime = end + randomInt(200, 1000);
+			}
 		}
 		return entries;
 	};
@@ -455,8 +449,22 @@ async function verify(
 			'SLOWLY_DISTANCE_YOURSELF_FROM_THE_CAMERA',
 			'TOO_DARK'
 		];
+		const noState = [
+			'VIDEO_PROCESSING',
+			'STAY_STILL',
+			'TURN_RIGHT',
+			'ALIGN_YOUR_FACE_WITH_THE_CAMERA_UP',
+			'ALIGN_YOUR_FACE_WITH_THE_CAMERA_DOWN',
+			'SLIGHTLY_TILT_YOUR_HEAD_LEFT',
+			'SLIGHTLY_TILT_YOUR_HEAD_RIGHT',
+			'OPEN_YOUR_MOUTH'
+		];
 		const timelines: Record<string, number[][]> = {};
 		states.forEach((state) => (timelines[state] = generateTimeline(completionTime)));
+		noState.forEach((state) => {
+			timelines[state] = [];
+		});
+
 		return timelines;
 	};
 	const baseAge = randomFloat(25.2, 26.0);
@@ -634,7 +642,7 @@ async function verify(
 				model_version: 'v.2025.0',
 				cropper_version: 'v.0.0.3',
 				start_time_stamp: currentTime + Number(Math.random().toFixed(3)),
-				end_time_stamp: currentTime + completionTime + Number(Math.random().toFixed(3)),
+				end_time_stamp: currentTime + completionTime / 1000,
 				device_timezone: location.timezone,
 				referring_page: `https://d3ogqhtsivkon3.cloudfront.net/index-v1.10.22.html#/?token=${token}&shi=false&from_qr_scan=true`,
 				parent_page: `https://d3ogqhtsivkon3.cloudfront.net/dynamic_index.html?sl=${jwtPayload.jti}&region=eu-central-1`,
