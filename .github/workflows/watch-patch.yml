@@ -2,7 +2,7 @@ name: Watch IS_PATCHED flag
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "* * * * *"
   workflow_dispatch:
 
 jobs:
