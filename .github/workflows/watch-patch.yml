@@ -2,7 +2,7 @@ name: Watch IS_PATCHED flag
 
 on:
   schedule:
-    - cron: "*/5 * * * *"   # every ~5 minutes
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -10,7 +10,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout fork (for storing state)
+        uses: actions/checkout@v4
+
+      - name: Load last value (from fork state branch if it exists)
+        id: last
+        run: |
+          git fetch origin watch-state || true
+          if git show origin/watch-state:.last_patch_state >/dev/null 2>&1; then
+            LAST=$(git show origin/watch-state:.last_patch_state)
+          else
+            LAST=""
+          fi
+          echo "last=$LAST" >> "$GITHUB_OUTPUT"
 
       - name: Fetch upstream
         run: |
@@ -25,35 +37,40 @@ jobs:
 
           VALUE=$(grep -oE 'const IS_PATCHED\s*=\s*(true|false)' "$FILE" \
             | grep -oE '(true|false)' \
-            | head -n1)
+            | head -n1 || true)
+
+          if [ -z "$VALUE" ]; then
+            echo "Could not find 'const IS_PATCHED = true/false' in $FILE"
+            exit 1
+          fi
 
           echo "value=$VALUE" >> "$GITHUB_OUTPUT"
-
-      - name: Read last value
-        id: last
-        run: |
-          if [ -f .last_patch_state ]; then
-            LAST=$(cat .last_patch_state)
-          else
-            LAST=""
-          fi
-          echo "last=$LAST" >> "$GITHUB_OUTPUT"
 
       - name: Notify if changed
         if: steps.current.outputs.value != steps.last.outputs.last && steps.last.outputs.last != ''
         run: |
-          curl -H "Content-Type: application/json" \
-          -d "{\"content\":\"IS_PATCHED changed: **${{ steps.last.outputs.last }} → ${{ steps.current.outputs.value }}**\"}" \
-          ${{ secrets.DISCORD_WEBHOOK }}
+          PAYLOAD="{\"content\":\"IS_PATCHED changed: **${{ steps.last.outputs.last }} → ${{ steps.current.outputs.value }}**\"}"
 
-      - name: Save new value
+          for HOOK in \
+            "${{ secrets.DISCORD_WEBHOOK }}" \
+            "${{ secrets.DISCORD_WEBHOOK_2 }}" \
+            "${{ secrets.DISCORD_WEBHOOK_3 }}" \
+            "${{ secrets.DISCORD_WEBHOOK_4 }}" \
+            "${{ secrets.DISCORD_WEBHOOK_5 }}"
+          do
+            if [ -n "$HOOK" ]; then
+              curl -sS -H "Content-Type: application/json" -d "$PAYLOAD" "$HOOK"
+            fi
+          done
+
+      - name: Save new value into state branch
         run: |
+          # switch back to a branch we can push to in your fork
+          git checkout -B watch-state origin/watch-state || git checkout -B watch-state
           echo "${{ steps.current.outputs.value }}" > .last_patch_state
 
-      - name: Commit state
-        run: |
           git config user.name "watch-bot"
           git config user.email "bot@users.noreply.github.com"
           git add .last_patch_state
           git commit -m "update state" || exit 0
-          git push origin HEAD:main || git push origin HEAD:master
+          git push origin watch-state
