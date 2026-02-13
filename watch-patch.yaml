@@ -1,0 +1,59 @@
+name: Watch IS_PATCHED flag
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # every ~5 minutes
+  workflow_dispatch:
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/OWNER/REPO.git
+          git fetch upstream
+          git checkout -B upstream-main upstream/main || git checkout -B upstream-main upstream/master
+
+      - name: Read current value
+        id: current
+        run: |
+          FILE="path/to/file.svelte"
+
+          VALUE=$(grep -oE 'const IS_PATCHED\s*=\s*(true|false)' "$FILE" \
+            | grep -oE '(true|false)' \
+            | head -n1)
+
+          echo "value=$VALUE" >> "$GITHUB_OUTPUT"
+
+      - name: Read last value
+        id: last
+        run: |
+          if [ -f .last_patch_state ]; then
+            LAST=$(cat .last_patch_state)
+          else
+            LAST=""
+          fi
+          echo "last=$LAST" >> "$GITHUB_OUTPUT"
+
+      - name: Notify if changed
+        if: steps.current.outputs.value != steps.last.outputs.last && steps.last.outputs.last != ''
+        run: |
+          curl -H "Content-Type: application/json" \
+          -d "{\"content\":\"IS_PATCHED changed: **${{ steps.last.outputs.last }} → ${{ steps.current.outputs.value }}**\"}" \
+          ${{ secrets.DISCORD_WEBHOOK }}
+
+      - name: Save new value
+        run: |
+          echo "${{ steps.current.outputs.value }}" > .last_patch_state
+
+      - name: Commit state
+        run: |
+          git config user.name "watch-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add .last_patch_state
+          git commit -m "update state" || exit 0
+          git push origin HEAD:main || git push origin HEAD:master
