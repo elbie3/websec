@@ -14,14 +14,14 @@ jobs:
 
       - name: Fetch upstream
         run: |
-          git remote add upstream https://github.com/OWNER/REPO.git
+          git remote add upstream https://github.com/xyzeva/k-id-age-verifier.git
           git fetch upstream
           git checkout -B upstream-main upstream/main || git checkout -B upstream-main upstream/master
 
       - name: Read current value
         id: current
         run: |
-          FILE="path/to/file.svelte"
+          FILE="src/routes/+page.svelte"
 
           VALUE=$(grep -oE 'const IS_PATCHED\s*=\s*(true|false)' "$FILE" \
             | grep -oE '(true|false)' \
