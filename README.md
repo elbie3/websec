@@ -1,4 +1,4 @@
-# k-id age verifier
-age verifies your account automatically as an adult on any website using k-id
+# id verification bypass activity checker
+automatically checks whether or not [kibty's](https://age-verifier.kibty.town) k-id age verification bypass is currently working and sends it to a webhook
 
-more information and usage is [on the website](https://age-verifier.kibty.town)
+no i am not going to add your webhook go fork it you lazy bum
